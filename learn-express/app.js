@@ -1,27 +1,26 @@
-const path = require("path");
+import path from "path";
+import express from "express";
 
-const express = require("express");
-const bodyParser = require("body-parser");
-
-const errorController = require("./controllers/error");
+import adminRoutes from "./routes/admin.js";
+import shopRoutes from "./routes/shop.js";
+import { get404 } from "./controllers/error.js";
+import dirname from "./utils/dirname.js";
 
 const app = express();
+
 const hostname = "127.0.0.1";
 const port = 3000;
 
 app.set("view engine", "ejs");
 app.set("views", "views");
 
-const adminRoutes = require("./routes/admin");
-const shopRoutes = require("./routes/shop");
-
-app.use(bodyParser.urlencoded({ extended: false }));
-app.use(express.static(path.join(__dirname, "public")));
+app.use(express.urlencoded({ extended: true }));
+app.use(express.static(path.join(dirname, "public")));
 
 app.use("/admin", adminRoutes);
 app.use(shopRoutes);
 
-app.use(errorController.get404);
+app.use(get404);
 
 app.listen(port, () => {
   console.log(`Server running at http://${hostname}:${port}/`);
