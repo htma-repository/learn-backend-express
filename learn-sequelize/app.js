@@ -5,6 +5,7 @@ import adminRoutes from "./routes/admin.js";
 import shopRoutes from "./routes/shop.js";
 import { get404 } from "./controllers/error.js";
 import dirname from "./utils/dirname.js";
+import { sequelize } from "./utils/db.js";
 
 const app = express();
 
@@ -22,6 +23,13 @@ app.use(shopRoutes);
 
 app.use(get404);
 
-app.listen(port, () => {
-  console.log(`Server running at http://${hostname}:${port}/`);
-});
+sequelize
+  .sync()
+  .then(() => {
+    app.listen(port, () => {
+      console.log(`Server running at http://${hostname}:${port}/`);
+    });
+  })
+  .catch((error) => {
+    console.error(error);
+  });
