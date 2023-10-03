@@ -2,7 +2,8 @@ import Product from "../models/product.js";
 
 export const getProducts = async (req, res, next) => {
   try {
-    const products = await Product.findAll();
+    // const products = await Product.findAll();
+    const products = await req.user.getProducts();
     res.render("admin/products", {
       prods: products,
       pageTitle: "Products",
@@ -27,7 +28,12 @@ export const postAddProduct = async (req, res, next) => {
   const price = req.body.price;
   const description = req.body.description;
   try {
-    await Product.create({ title, image_url: imageUrl, price, description });
+    await req.user.createProduct({
+      title,
+      image_url: imageUrl,
+      price,
+      description,
+    });
     res.setHeader("Content-Type", "text/html");
     res.redirect("/");
   } catch (error) {
@@ -43,7 +49,9 @@ export const getEditProduct = async (req, res, next) => {
   const prodId = req.params.productId;
 
   try {
-    const product = await Product.findOne({ where: { id: prodId } });
+    // const product = await Product.findOne({ where: { id: prodId } });
+    const getProduct = await req.user.getProducts({ where: { id: prodId } });
+    const product = getProduct[0];
     if (!product) {
       return res.redirect("/");
     }
