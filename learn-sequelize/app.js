@@ -10,6 +10,8 @@ import Product from "./models/product.js";
 import User from "./models/user.js";
 import Cart from "./models/cart.js";
 import CartItem from "./models/cart-item.js";
+import Order from "./models/order.js";
+import OrderItem from "./models/order-item.js";
 
 const app = express();
 
@@ -47,6 +49,10 @@ User.hasOne(Cart);
 Cart.belongsTo(User);
 Cart.belongsToMany(Product, { through: CartItem });
 Product.belongsToMany(Cart, { through: CartItem });
+Order.belongsTo(User);
+User.hasMany(Order);
+Order.belongsToMany(Product, { through: OrderItem });
+Product.belongsToMany(Order, { through: OrderItem });
 
 sequelize
   .sync()
@@ -62,8 +68,15 @@ sequelize
     }
     return user;
   })
-  .then((user) => {
-    console.log({ user });
+  .then(async (user) => {
+    const cart = await user.getCart();
+    console.log({ cart });
+    if (!cart) {
+      return user.createCart();
+    }
+    return cart;
+  })
+  .then((cart) => {
     app.listen(port, () => {
       console.log(`Server running at http://${hostname}:${port}/`);
     });
