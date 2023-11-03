@@ -8,6 +8,12 @@ export async function usersCollection() {
   return collection;
 }
 
+async function ordersCollection() {
+  const db = await dbConnect();
+  const orderCollection = db.collection("orders");
+  return orderCollection;
+}
+
 class User {
   constructor(name, email, cart) {
     this.name = name;
@@ -68,10 +74,18 @@ class User {
   }
 
   static async addToOrder(ordersData) {
-    const db = await dbConnect();
-    const orderCollection = db.collection("orders");
+    const orderCollection = await ordersCollection();
 
     const result = await orderCollection.insertOne(ordersData);
+    return result;
+  }
+
+  static async getOrdersItems(userId) {
+    const orderCollection = await ordersCollection();
+    const result = await orderCollection.findOne({
+      "user._id": new ObjectId(userId),
+    });
+
     return result;
   }
 }

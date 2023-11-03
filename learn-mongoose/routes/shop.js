@@ -3,8 +3,8 @@ import express from "express";
 import {
   getCart,
   getIndex,
-  getProduct,
   getProducts,
+  getProduct,
   postCart,
   postCartDeleteProduct,
   postOrder,

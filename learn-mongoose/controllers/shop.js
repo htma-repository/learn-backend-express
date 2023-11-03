@@ -1,18 +1,11 @@
-import { ObjectId } from "mongodb";
-import Product, { productsCollection } from "../models/product.js";
-import User, { usersCollection } from "../models/user.js";
+import mongoose from "mongoose";
 
-import { mongoConnect } from "../utils/db.js";
-
-const client = await mongoConnect();
-
-function getAllProducts() {
-  return Product.getAll();
-}
+import { Product } from "../models/product.js";
+import { Order } from "../models/order.js";
 
 export const getIndex = async (req, res, next) => {
   try {
-    const products = await getAllProducts();
+    const products = await Product.find();
     res.render("shop/index", {
       prods: products,
       pageTitle: "Shop",
@@ -20,15 +13,12 @@ export const getIndex = async (req, res, next) => {
     });
   } catch (error) {
     console.error(error);
-  } finally {
-    await client.close();
   }
 };
 
 export const getProducts = async (req, res, next) => {
   try {
-    const products = await getAllProducts();
-    console.log({ products });
+    const products = await Product.find();
     res.render("shop/product-list", {
       prods: products,
       pageTitle: "All Products",
@@ -36,43 +26,41 @@ export const getProducts = async (req, res, next) => {
     });
   } catch (error) {
     console.error(error);
-  } finally {
-    await client.close();
   }
 };
 
 export const getProduct = async (req, res, next) => {
+  const prodId = req.params.productId;
   try {
-    const prodId = req.params.productId;
-    console.log({ prodIdController: prodId });
-    const product = await Product.getOne(prodId);
-    res.render("shop/product-detail", {
-      product: product,
-      pageTitle: product.title,
-      path: "/products",
+    const product = await Product.findOne({
+      _id: new mongoose.Types.ObjectId(prodId),
     });
+
+    if (product.id === prodId) {
+      res.render("shop/product-detail", {
+        product: product,
+        pageTitle: product.title,
+        path: "/products",
+      });
+    }
   } catch (error) {
     console.log(error);
-  } finally {
-    await client.close();
   }
 };
 
 export const getCart = async (req, res, next) => {
   try {
-    const userId = req.user._id;
-    const prodCollection = await productsCollection();
-    const userCart = await User.getCart(userId);
+    const user = req.user;
+    const userCart = user.cart.items;
 
     if (userCart.length > 0) {
       const cartProductId = userCart?.map((item) => item.product_id);
-      const productsInCart = await prodCollection
-        .find({
-          _id: { $in: cartProductId },
-        })
-        .toArray();
+      const productsInCart = await Product.find({
+        _id: { $in: cartProductId },
+      });
+
       const cartsData = productsInCart?.map((product) => ({
-        ...product,
+        ...product._doc,
         quantity: userCart.find(
           (p) => p.product_id.toString() === product._id.toString()
         ).quantity,
@@ -84,6 +72,7 @@ export const getCart = async (req, res, next) => {
         products: cartsData,
       });
     } else {
+      console.log({ userCart });
       res.render("shop/cart", {
         path: "/cart",
         pageTitle: "Your Cart",
@@ -92,20 +81,22 @@ export const getCart = async (req, res, next) => {
     }
   } catch (error) {
     console.error(error);
-  } finally {
-    await client.close();
   }
 };
 
 export const postCart = async (req, res, next) => {
   try {
     const prodId = req.body.productId;
-    const userId = req.user._id;
-    const userCart = await User.getCart(userId);
-    const existingItemIndex = userCart?.findIndex(
+    const user = req.user;
+    const userId = user._id;
+
+    const userCart = user.cart.items;
+
+    const existingItemIndex = userCart.findIndex(
       (product) => product.product_id?.toString() === prodId.toString()
     );
     const existingItem = userCart[existingItemIndex];
+    console.log({ existingItem, existingItemIndex });
     const newQuantity = 1;
     let updatedItems;
 
@@ -121,7 +112,7 @@ export const postCart = async (req, res, next) => {
       updatedItems.items[existingItemIndex] = updatedItem;
     } else {
       const newProductToCart = {
-        product_id: new ObjectId(prodId),
+        product_id: prodId,
         quantity: newQuantity,
       };
 
@@ -130,61 +121,49 @@ export const postCart = async (req, res, next) => {
       };
     }
 
-    const carts = await User.AddToCart(userId, updatedItems);
-    if (carts.modifiedCount === 1) {
+    const carts = await user.addToCart(updatedItems);
+    if (carts._id === userId) {
       res.redirect("/cart");
       return;
     }
   } catch (error) {
     console.error(error);
-  } finally {
-    await client.close();
   }
 };
 
 export const postCartDeleteProduct = async (req, res, next) => {
   const prodId = req.body.productId;
-  const userId = req.user._id;
-  const userCart = await User.getCart(userId);
-  const userCollection = await usersCollection();
+  const user = req.user;
+  const userCart = user.cart.items;
+
   try {
     const deletedItemsCart = userCart.filter(
       (item) => item.product_id.toString() !== prodId.toString()
     );
 
-    const result = await userCollection.updateOne(
-      { _id: new ObjectId(userId) },
-      { $set: { cart: { items: deletedItemsCart } } }
-    );
+    user.cart.items = deletedItemsCart;
 
-    if (result.modifiedCount === 1) {
-      res.redirect("/cart");
-    }
+    await user.save();
+
+    res.redirect("/cart");
   } catch (error) {
     console.error(error);
-  } finally {
-    await client.close();
   }
 };
 
 export const postOrder = async (req, res, next) => {
   try {
-    const userId = req.user._id;
-    const user = await User.getOneUser(userId);
-    const userCart = user?.cart?.items;
-
-    const prodCollection = await productsCollection();
-    const userCollection = await usersCollection();
+    const user = req.user;
+    const userId = user._id;
+    const userCart = user?.cart.items;
 
     if (userCart.length > 0) {
       const cartProductId = userCart?.map((item) => item.product_id);
-      const productsInCart = await prodCollection
-        .find({
-          _id: { $in: cartProductId },
-        })
-        .toArray();
+      const productsInCart = await Product.find({
+        _id: { $in: cartProductId },
+      });
       const cartsData = productsInCart?.map((product) => ({
-        ...product,
+        ...product._doc,
         quantity: userCart.find(
           (p) => p.product_id.toString() === product._id.toString()
         )?.quantity,
@@ -195,10 +174,10 @@ export const postOrder = async (req, res, next) => {
         0
       );
 
-      const order = {
-        items: cartsData,
+      const newOrder = {
+        products: cartsData,
         user: {
-          _id: user._id,
+          user_id: userId,
           name: user.name,
           email: user.email,
         },
@@ -207,32 +186,32 @@ export const postOrder = async (req, res, next) => {
         updated_at: new Date().toISOString(),
       };
 
-      const addOrder = await User.addToOrder(order);
+      const order = new Order(newOrder);
 
-      if (addOrder.insertedId) {
-        const removeUserCart = await userCollection.updateOne(
-          { _id: new ObjectId(userId) },
-          { $set: { cart: { items: [] } } }
-        );
+      const saveOrder = await order.save();
 
-        if (removeUserCart.modifiedCount === 1) {
+      if (saveOrder.user.user_id === userId) {
+        user.cart.items = [];
+        const saveCart = await user.save();
+
+        if (saveCart?.id) {
           res.redirect("/orders");
         }
       }
     }
   } catch (error) {
     console.error(error);
-  } finally {
-    await client.close();
   }
 };
 
 export const getOrders = async (req, res, next) => {
   try {
-    const userId = req.user._id;
-    const userOrder = await User.getOrdersItems(userId);
+    const user = req.user;
+    const userId = user._id;
+    const userOrder = await Order.find({ "user.user_id": userId });
+    console.log({ userOrder });
 
-    if (!userOrder._id) {
+    if (userOrder.length === 0 || !userOrder) {
       throw new Error("Failed get user orders");
     }
 
@@ -243,26 +222,12 @@ export const getOrders = async (req, res, next) => {
     });
   } catch (error) {
     console.error(error);
-  } finally {
-    await client.close();
   }
-  // try {
-  //   const orders = await req.user.getOrders({ include: ["products"] });
-  //   if (orders) {
-  //     res.render("shop/orders", {
-  //       path: "/orders",
-  //       pageTitle: "Your Orders",
-  //       orders: orders,
-  //     });
-  //   }
-  // } catch (error) {
-  //   console.error(error);
-  // }
 };
 
-// export const getCheckout = (req, res, next) => {
-//   res.render("shop/checkout", {
-//     path: "/checkout",
-//     pageTitle: "Checkout",
-//   });
-// };
+// // export const getCheckout = (req, res, next) => {
+// //   res.render("shop/checkout", {
+// //     path: "/checkout",
+// //     pageTitle: "Checkout",
+// //   });
+// // };
