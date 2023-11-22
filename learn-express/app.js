@@ -14,7 +14,13 @@ const port = 3000;
 app.set("view engine", "ejs");
 app.set("views", "views");
 
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.path}`);
+  next();
+});
+
 app.use(express.urlencoded({ extended: true }));
+//app.use(express.json())
 app.use(express.static(path.join(dirname, "public")));
 
 app.use("/admin", adminRoutes);

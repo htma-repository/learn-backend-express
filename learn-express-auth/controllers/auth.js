@@ -1,4 +1,5 @@
 const bcrypt = require("bcrypt");
+const { validationResult } = require("express-validator");
 const User = require("../models/user");
 const crypto = require("crypto");
 
@@ -8,6 +9,10 @@ exports.getLogin = (req, res, next) => {
     pageTitle: "Login",
     isAuthenticated: false,
     error: false,
+    oldInput: {
+      email: "",
+      password: "",
+    },
   });
 };
 
@@ -17,6 +22,11 @@ exports.getSignup = (req, res, next) => {
     pageTitle: "Signup",
     isAuthenticated: false,
     error: false,
+    oldInput: {
+      email: "",
+      password: "",
+      confirmPassword: "",
+    },
   });
 };
 
@@ -24,40 +34,60 @@ exports.postLogin = async (req, res, next) => {
   const email = req.body.email;
   const password = req.body.password;
 
+  const errors = validationResult(req);
+
+  const errorsResult = errors.formatWith((err) => err.msg).array();
+
+  console.log({ errorsResult });
+
+  if (!errors.isEmpty()) {
+    return res.status(422).render("auth/login", {
+      path: "/login",
+      pageTitle: "Login",
+      isAuthenticated: false,
+      error: true,
+      errorMessage: errorsResult,
+      oldInput: {
+        email,
+        password,
+      },
+    });
+  }
+
   try {
     const user = await User.findOne({ email });
-    const passwordCompare = await bcrypt.compare(password, user?.password);
+    // const passwordCompare = await bcrypt.compare(password, user?.password);
 
-    console.log({ passwordCompare });
+    // console.log({ passwordCompare });
 
-    if (!user) {
-      return res.render("auth/login", {
-        path: "/login",
-        pageTitle: "Login",
-        isAuthenticated: false,
-        error: true,
-        errorMessage: "User does not exist with this email address!",
-      });
-    }
+    // if (!user) {
+    //   return res.render("auth/login", {
+    //     path: "/login",
+    //     pageTitle: "Login",
+    //     isAuthenticated: false,
+    //     error: true,
+    //     errorMessage: "User does not exist with this email address!",
+    //   });
+    // }
 
-    if (!passwordCompare) {
-      return res.render("auth/login", {
-        path: "/login",
-        pageTitle: "Login",
-        isAuthenticated: false,
-        error: true,
-        errorMessage: "Incorrect password!",
-      });
-    }
+    // if (!passwordCompare) {
+    //   return res.render("auth/login", {
+    //     path: "/login",
+    //     pageTitle: "Login",
+    //     isAuthenticated: false,
+    //     error: true,
+    //     errorMessage: "Incorrect password!",
+    //   });
+    // }
 
-    if (passwordCompare) {
-      req.session.isLoggedIn = true;
-      req.session.user = user;
-      return req.session.save((err) => {
-        console.log(err);
-        res.redirect("/");
-      });
-    }
+    // if (passwordCompare) {
+    req.session.isLoggedIn = true;
+    req.session.user = user;
+    return req.session.save((err) => {
+      console.log(err);
+      res.redirect("/");
+    });
+    // }
   } catch (error) {
     console.error(error);
   }
@@ -68,27 +98,57 @@ exports.postSignup = async (req, res, next) => {
   const password = req.body.password;
   const confirmPassword = req.body.confirmPassword;
 
-  try {
-    const user = await User.findOne({ email });
+  const errors = validationResult(req);
 
-    if (user) {
-      return res.render("auth/signup", {
-        path: "/signup",
-        pageTitle: "Signup",
-        isAuthenticated: false,
-        error: true,
-        errorMessage: "User already exist with this email address!",
-      });
-    }
-    if (password !== confirmPassword) {
-      return res.render("auth/signup", {
-        path: "/signup",
-        pageTitle: "Signup",
-        isAuthenticated: false,
-        error: true,
-        errorMessage: "Passwords do not match!",
-      });
-    }
+  const errorsResult = errors.formatWith((err) => err.msg).array();
+
+  console.log({ errorsResult });
+
+  if (!errors.isEmpty()) {
+    return res.status(422).render("auth/signup", {
+      path: "/signup",
+      pageTitle: "Signup",
+      isAuthenticated: false,
+      error: true,
+      errorMessage: errorsResult,
+      oldInput: {
+        email,
+        password,
+        confirmPassword,
+      },
+    });
+  }
+
+  try {
+    // if (!email.includes("@")) {
+    //   return res.render("auth/signup", {
+    //     path: "/signup",
+    //     pageTitle: "Signup",
+    //     isAuthenticated: false,
+    //     error: true,
+    //     errorMessage: "Invalid email address!",
+    //   });
+    // }
+
+    // if (password.length < 6 || !password) {
+    //   return res.render("auth/signup", {
+    //     path: "/signup",
+    //     pageTitle: "Signup",
+    //     isAuthenticated: false,
+    //     error: true,
+    //     errorMessage: "Password must at least 6 characters long!",
+    //   });
+    // }
+
+    // if (password !== confirmPassword) {
+    //   return res.render("auth/signup", {
+    //     path: "/signup",
+    //     pageTitle: "Signup",
+    //     isAuthenticated: false,
+    //     error: true,
+    //     errorMessage: "Passwords do not match!",
+    //   });
+    // }
     const hashedPassword = await bcrypt.hash(password, 12);
     const newUser = new User({
       email: email,

@@ -11,7 +11,7 @@ import mysql from "mysql2";
 const pool = mysql.createPool({
   host: "localhost",
   user: "root",
-  password: "admin123",
+  password: "Rahmanto123!",
   database: "learn_express",
   waitForConnections: true,
   connectionLimit: 10,
