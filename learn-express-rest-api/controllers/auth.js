@@ -1,6 +1,7 @@
 import { ValidationError as SequelizeValidationError } from "sequelize";
 
 import User from "../models/user.js";
+import Role from "../models/role.js";
 import {
   generateToken,
   accessTokenSecret,
@@ -24,10 +25,17 @@ export async function signUp(req, res, next) {
 
     const hashedPassword = await hashPassword(password);
 
+    const getRoles = await Role.findOne({ where: { role: "user" } });
+
+    const defaultRoleId = getRoles.dataValues?.id;
+
+    console.log({ defaultRoleId });
+
     const createdUser = await User.create({
       username,
       email,
       password: hashedPassword,
+      role_id: defaultRoleId,
     });
 
     if (!createdUser) {
