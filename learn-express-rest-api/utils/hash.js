@@ -1,8 +1,8 @@
 import { hash, compare } from "bcrypt";
 
-export function limitArray(arr, limit) {
-  return limit === 0 || limit > arr.length ? arr : arr.slice(0, limit);
-}
+// export function limitArray(arr, limit) {
+//   return limit === 0 || limit > arr.length ? arr : arr.slice(0, limit);
+// }
 
 export async function hashPassword(password) {
   const salt = 12;

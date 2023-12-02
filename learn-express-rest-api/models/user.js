@@ -32,8 +32,15 @@ const User = sequelize.define(
       type: DataTypes.STRING,
       allowNull: true,
     },
+    role_id: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      references: {
+        model: "roles",
+        key: "id",
+      },
+    },
   },
-  { createdAt: "created_at", updatedAt: "updated_at" }
+  { timestamps: true, createdAt: "created_at", updatedAt: "updated_at" }
 );
 
 export default User;

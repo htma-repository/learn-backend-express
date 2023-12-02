@@ -16,6 +16,7 @@ import { errorMiddleware } from "./middleware/error.js";
 import User from "./models/user.js";
 import Post from "./models/post.js";
 import Role from "./models/role.js";
+import { logger } from "./utils/logger.js";
 
 const app = express();
 
@@ -49,6 +50,7 @@ app.use(
 app.use(cookieParser());
 app.use(compression());
 app.use(helmet());
+app.use(logger());
 const limiter = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 minutes
   limit: 20, // Limit each IP to 20 requests per `window` (here, per 5 minutes).
@@ -87,6 +89,7 @@ app.use(errorMiddleware);
 
 User.hasMany(Post, { foreignKey: "user_id" });
 Post.belongsTo(User, { foreignKey: "user_id" });
+
 Role.hasOne(User, { foreignKey: "role_id" });
 User.belongsTo(Role, { foreignKey: "role_id" });
 

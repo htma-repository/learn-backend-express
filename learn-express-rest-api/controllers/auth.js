@@ -8,7 +8,7 @@ import {
   refreshTokenSecret,
 } from "../utils/jwt.js";
 
-import { hashPassword, comparePassword } from "../utils/utils.js";
+import { hashPassword, comparePassword } from "../utils/hash.js";
 
 export async function signUp(req, res, next) {
   try {
@@ -184,6 +184,8 @@ export async function signIn(req, res, next) {
 export async function signOut(req, res, next) {
   try {
     const refreshToken = req.cookies.rt;
+
+    console.log({ refreshToken });
 
     if (!refreshToken) {
       return res.sendStatus(204);
